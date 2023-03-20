@@ -17,6 +17,14 @@ img_enemy = [
     pygame.image.load("image/enemy0.png"),
     pygame.image.load("image/enemy1.png")
 ]
+img_explode = [
+    None,
+    pygame.image.load("image/explosion1.png"),
+    pygame.image.load("image/explosion2.png"),
+    pygame.image.load("image/explosion3.png"),
+    pygame.image.load("image/explosion4.png"),
+    pygame.image.load("image/explosion5.png"),
+]
 
 tmr = 0
 bg_y = 0
@@ -48,6 +56,12 @@ LINE_T = -80                        # 적이 나타나는(사라지는) 위쪽 �
 LINE_B = 800                        # 적이 나타나는(사라지는) 아래쪽 좌표
 LINE_L = -80                        # 적이 나타나는(사라지는) 왼쪽 좌표
 LINE_R = 1040                       # 적이 나타나는(사라지는) 오른쪽 좌표
+
+EFFECT_MAX = 100                    # 폭팔 연출 최대 수 정의
+eff_no = 0                          # 폭팔 연출 시 사용할 리스트 인덱스 변수
+eff_p = [0] * EFFECT_MAX            # 폭팔 연출 시 이미지 번호 리스트
+eff_x = [0] * EFFECT_MAX            # 폭팔 연출 시 X 좌표 리스트
+eff_y = [0] * EFFECT_MAX            # 폭팔 연출 시 Y 좌표 리스트
 
 def get_dis(x1, y1, x2, y2):        # 두 점 사이 거리 계산
     return ((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
@@ -148,11 +162,27 @@ def move_enemy(scrn):   # 적 기체 이동
                 r = int((w+h) / 4) + 12                     # 히트체크에 사용할 거리 계산
                 for n in range(MISSILE_MAX):
                     if msl_f[n] == True and get_dis(emy_x[i], emy_y[i], msl_x[n], msl_y[n]) < r * r:
-                        msl_f[n] = False        # 탄환 삭제
-                        emy_f[i] = False        # 적 기체 삭제
+                        msl_f[n] = False                    # 탄환 삭제
+                        set_effect(emy_x[i], emy_y[i])      # 폭팔 이펙트
+                        emy_f[i] = False                    # 적 기체 삭제
 
             img_rz = pygame.transform.rotozoom(img_enemy[png], ang, 1.0)                                # 적 기체를 회전시킨 이미지 생성
             scrn.blit(img_rz, [emy_x[i] - img_rz.get_width() / 2, emy_y[i] - img_rz.get_height() / 2])  # 적 기체 이미지 그리기
+
+def set_effect(x, y):                       # 폭팔 설정
+    global eff_no                           # 전역 변수 선언
+    eff_p[eff_no] = 1                       # 폭팔 연출 이미지 번호 대입
+    eff_x[eff_no] = x                       # 폭팔 연출 X 좌표 대입
+    eff_y[eff_no] = y                       # 폭팔 연출 Y 좌표 대입
+    eff_no = (eff_no + 1) % EFFECT_MAX      # 다음 설정을 위한 번호 계산
+
+def draw_effect(scrn):                      # 폭팔 연출
+    for i in range(EFFECT_MAX) :            # 반복
+        if eff_p[i] > 0:                    # 폭팔 연출 중이면
+            scrn.blit(img_explode[eff_p[i]], [eff_x[i] - 48, eff_y[i] - 48])     # 폭팔 연출 표시
+            eff_p[i] = eff_p[i] + 1         # eff_p 값 1 증가
+            if eff_p[i] == 6:               # eff_p가 6이 되었다면
+                eff_p[i] = 0                # eff_p에 0 대입 후 연출 종료
 
 def main(): # 메인 루프
     global tmr, bg_y
@@ -183,6 +213,7 @@ def main(): # 메인 루프
         move_missile(screen)
         bring_enemy()
         move_enemy(screen)
+        draw_effect(screen)
 
         pygame.display.update()
         clock.tick(30)
