@@ -36,6 +36,12 @@ img_title = [
     pygame.image.load("image/logo.png")
 ]
 
+# SE 로딩 변수
+se_barrage      = None          # 탄막 발사 시 사용할 SE 로딩 변수
+se_damage       = None          # 데미지를 입을 시 사용할 SE 로딩 변수
+se_explosion    = None          # 보스 기체 폭발 시 사용할 SE 로딩 변수
+se_shot         = None          # 탄환 발사 시 사용할 SE 로딩 변수
+
 idx = 0             # 인덱스 변수
 tmr = 0             # 타이머 변수
 score = 0           # 점수 변수
@@ -113,10 +119,12 @@ def move_starship(scrn, key): # 플레이어 기체 이동
     key_spc = (key_spc + 1) * key[K_SPACE]                          # 스페이스 키를 누르는 동안 변수 값 증가
     if key_spc % 4 == 1:                                            # 스페이스 키를 처음 누른 후,4 프레임마다 탄환 발사
         set_missile(0)                                              # 미사일 발사
+        se_shot.play()                                              # 발사음 출력
     key_z = (key_z + 1) * key[K_z]                                  # Z키를 누르는 동안 변수 값 증가
     if key_z == 1 and s_shield > 10:                                # 한 번 눌렀을 때 실드량이 10보다 크다면
         set_missile(10)                                             # 탄막치기
         s_shield = s_shield - 10                                    # 실드량 10 감소
+        se_barrage.play()                                           # 발사음 출력
 
     if s_unvincible % 2 == 0:                                       # 무적 상태에서 깜빡이기 위한 if 구문
         scrn.blit(img_ship[3], [s_x - 8, s_y + 40 + (tmr % 3)*2])   # 엔진 불꽃 그리기
@@ -140,6 +148,7 @@ def move_starship(scrn, key): # 플레이어 기체 이동
                         tmr = 0
                     if s_unvincible == 0:                               # 무적 상태가 아니라면
                         s_unvincible = 60                               # 무적 상태로 설정
+                        se_damage.play()                                # 데미지 효과음 출력
                     emy_f[i] = False                                    # 적 기체 삭제
 
 def set_missile(typ):  # 플레이어 기체 발사 탄환 설정
@@ -234,11 +243,17 @@ def draw_effect(scrn):                      # 폭팔 연출
 
 def main(): # 메인 루프
     global idx, tmr, score, bg_y, s_x, s_y, s_d, s_shield, s_unvincible
+    global se_barrage, se_damage, se_explosion, se_shot
+
     pygame.init()
     pygame.display.set_caption("파이썬 슈팅게임")
     screen = pygame.display.set_mode((960, 720))
     clock = pygame.time.Clock()
-
+    se_barrage = pygame.mixer.Sound("sound/barrage.ogg")            # SE 로딩
+    se_damage  = pygame.mixer.Sound("sound/damage.ogg")         # SE 로딩
+    se_explosion = pygame.mixer.Sound("sound/explosion.ogg")    # SE 로딩
+    se_shot      = pygame.mixer.Sound("sound/shot.ogg")         # SE 로딩
+    
     while True:
         tmr = tmr + 1
         for event in pygame.event.get():
@@ -277,6 +292,8 @@ def main(): # 메인 루프
                     emy_f[i] = False
                 for i in range(MISSILE_MAX):                                                    # 플레이어 탄환 미 발사 상태
                     msl_f[i] = False
+                pygame.mixer.music.load("sound/bgm.ogg")                                        # BGM 로딩
+                pygame.mixer.music.play(-1)                                                     # BGM 무한반복출력
 
         # 게임 플레이중
         if idx == 1:
@@ -292,9 +309,20 @@ def main(): # 메인 루프
         if idx == 2:
             move_missile(screen)
             move_enemy(screen)
-            draw_text(screen, "GAME OVER", 480, 300, 80, RED)
-
-            if tmr == 150:          # tmr 값이 150 이면 타이틀 화면으로
+            if tmr == 1:                        # tmr 값이 1 이면
+                pygame.mixer.music.stop()       # bgm 정지
+            if tmr <= 90:                       # tmr 값이 90 이하면
+                if tmr % 5 == 0:                # tmr % 5 = 0 이면
+                    set_effect(s_x + random.    # 플레이어 기체 폭팔 연출
+                               randint(-60,60), s_y+ random.randint(-60, 60))
+                if tmr % 10 == 0:               # tmr % 10 = 0 이면
+                    se_damage.play()            # 폭팔음 출력
+            if tmr == 120:                      # tmr 값이 120이면
+                pygame.mixer.music.load("sound/gameover.ogg")   # 게임오버 음악 로딩
+                pygame.mixer.music.play(0)                      # 게임오버 음악 출력
+            if tmr > 120:
+                draw_text(screen, "GAME OVER", 480, 300, 80, RED)
+            if tmr == 400:          # tmr 값이 400 이면 타이틀 화면으로
                 idx = 0
                 tmr = 0
 
@@ -302,8 +330,14 @@ def main(): # 메인 루프
         if idx == 3:
             move_starship(screen, key)
             move_missile(screen)
-            draw_text(screen, "GAME CLEAR", 480, 300, 80, SILVER)
-            if tmr == 150:
+            if tmr == 1:
+                pygame.mixer.music.stop()
+            if tmr == 2:
+                pygame.mixer.music.load("sound/gameclear.ogg")
+                pygame.mixer.music.play(0)
+            if tmr > 20:
+                draw_text(screen, "GAME CLEAR", 480, 300, 80, SILVER)
+            if tmr == 300:
                 idx = 0
                 tmr = 0
 
