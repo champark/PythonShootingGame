@@ -24,7 +24,9 @@ img_enemy = [
     pygame.image.load("image/enemy1.png"),
     pygame.image.load("image/enemy2.png"),
     pygame.image.load("image/enemy3.png"),
-    pygame.image.load("image/enemy4.png")
+    pygame.image.load("image/enemy4.png"),
+    pygame.image.load("image/enemy_boss.png"),
+    pygame.image.load("image/enemy_boss_f.png")
 ]
 img_explode = [
     None,
@@ -78,6 +80,7 @@ emy_count = [0] * ENEMY_MAX         # 적 움직임 등을 관리할 리스트
 
 EMY_BULLET = 0
 EMY_MOP = 1                         # 잡몹 번호 관리 리스트
+EMY_BOSS = 5                        # 보스 기체 번호를 관리할 상수
 LINE_T = -80                        # 적이 나타나는(사라지는) 위쪽 좌표
 LINE_B = 800                        # 적이 나타나는(사라지는) 아래쪽 좌표
 LINE_L = -80                        # 적이 나타나는(사라지는) 왼쪽 좌표
@@ -155,7 +158,8 @@ def move_starship(scrn, key): # 플레이어 기체 이동
                     if s_unvincible == 0:                               # 무적 상태가 아니라면
                         s_unvincible = 60                               # 무적 상태로 설정
                         se_damage.play()                                # 데미지 효과음 출력
-                    emy_f[i] = False                                    # 적 기체 삭제
+                    if emy_type[i] < EMY_BOSS:                          # 접촉한 기체가 보스가 아닐 경우에는
+                        emy_f[i] = False                                # 적 기체 삭제
 
 def set_missile(typ):  # 플레이어 기체 발사 탄환 설정
     global msl_no
@@ -186,15 +190,15 @@ def move_missile(scrn): # 탄환이동
 
 def bring_enemy():      # 적 기체 등장
     sec = tmr / 30              # 게임 진행 시간(초단위)을 sec에 대입
-    if tmr % 30 == 0:
-        if 0 < sec and sec < 15:
-            set_enemy(random.randint(20,940), LINE_T, 90, EMY_MOP, 8, 1)    # sec값이 0초과 15미만이면 일반 몹 1 등장
-        if 15 < sec and sec < 30:
-            set_enemy(random.randint(20, 940), LINE_T, 90, EMY_MOP + 1, 12, 1)  # sec값이 15초과 30미만이면 일반 몹 2 등장
-        if 30 < sec and sec < 45:
-            set_enemy(random.randint(100, 860), LINE_T, random.randint(60, 120), EMY_MOP + 2, 6, 3)  # sec값이 30초과 45미만이면 일반 몹 3 등장
-        if 45 < sec and sec < 60:
-            set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)  # sec값이 30초과 45미만이면 일반 몹 3 등장
+    if 0 < sec and sec < 15 and tmr % 60 == 0:                          # sec 값이 0~15 사이인 경우 각 타이밍에 :
+        set_enemy(random.randint(20,940),   LINE_T, 90, EMY_MOP, 8, 1)    # 일반 몹 1 등장
+        set_enemy(random.randint(20, 940),  LINE_T, 90, EMY_MOP + 1, 12, 1)  # 일반 몹 2 등장
+        set_enemy(random.randint(100, 860), LINE_T,                          # 일반 몹 3 등장
+                  random.randint(60, 120), EMY_MOP + 2, 6, 3)
+        set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)  # 일반 몹 3 등장
+        set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)  # 일반 몹 4 등장
+    if tmr == 30 * 20:          # 보스출현
+        set_enemy(480, -210, 90, EMY_BOSS, 4, 200)
 
 def set_enemy(x, y, a, ty, sp, sh):     # 적 기체 설정
     global emy_no                   # 전역 변수 선언
@@ -217,37 +221,64 @@ def move_enemy(scrn):   # 적 기체 이동
         if emy_f[i] == True:
             ang = -90 - emy_a[i]
             png = emy_type[i]
-            emy_x[i] = emy_x[i] + emy_speed[i] * math.cos(math.radians(emy_a[i]))           # x 좌표 변화
-            emy_y[i] = emy_y[i] + emy_speed[i] * math.sin(math.radians(emy_a[i]))           # y 좌표 변화
-            if emy_type[i] == 4:        # 진행 방향을 바꾸는 적
-                emy_count[i] == emy_count[i] + 1        # emy_count 증가
-                ang = emy_count[i] * 10                 # 이미지 회전 각도 계산
-                if emy_y[i] > 240 and emy_a[i] == 90:   # y 좌표가 240 보다 크다면
-                    emy_a[i] = random.choice([50,70,110,130])   # 무작위로 방향 변경
-                    set_enemy(emy_x[i], emy_y[i], 90, EMY_BULLET, 6, 0)     # 탄환 발사
-            
-            # if emy_type[i] == 1 and emy_y[i] > 360:         # 적 기체의 Y 좌표가 360을 넘었다면
-            #     set_enemy(emy_x[i], emy_y[i], 90, 0, 8)     # 탄환발사
-            #     emy_a[i] = -45
-            #     emy_speed[i] = 16
 
-            if emy_x[i] < LINE_L or LINE_R < emy_x[i] or emy_y[i] < LINE_T or LINE_B < emy_y[i]:        # 화면 상하좌우에서 벗어났다면
-                emy_f[i] = False                                                                        # 적 기체 삭제
+            if emy_type[i] < EMY_BOSS:  # 적 일반기체 이동
+                emy_x[i] = emy_x[i] + emy_speed[i] * math.cos(math.radians(emy_a[i]))           # x 좌표 변화
+                emy_y[i] = emy_y[i] + emy_speed[i] * math.sin(math.radians(emy_a[i]))           # y 좌표 변화
+                if emy_type[i] == 4:        # 진행 방향을 바꾸는 적
+                    emy_count[i] = emy_count[i] + 1        # emy_count 증가
+                    ang = emy_count[i] * 10                 # 이미지 회전 각도 계산
+                    if emy_y[i] > 240 and emy_a[i] == 90:   # y 좌표가 240 보다 크다면
+                        emy_a[i] = random.choice([50,70,110,130])   # 무작위로 방향 변경
+                        set_enemy(emy_x[i], emy_y[i], 90, EMY_BULLET, 6, 0)     # 탄환 발사
+                if emy_x[i] < LINE_L or LINE_R < emy_x[i] or emy_y[i] < LINE_T or LINE_B < emy_y[i]:        # 화면 상하좌우에서 벗어났다면
+                    emy_f[i] = False                                                                        # 적 기체 삭제
 
-            if emy_type[i] != EMY_BULLET:                   # 플레이어 기체 발사 탄환과 히트 체크
-                w = img_enemy[emy_type[i]].get_width()      # 적 기체 이미지 폭
-                h = img_enemy[emy_type[i]].get_height()     # 적 기체 이미지 높이
-                r = int((w+h) / 4) + 12                     # 히트체크에 사용할 거리 계산
+            else:   # 보스기체
+                if emy_count[i] == 0:
+                    emy_y[i] = emy_y[i] + 2
+                    if emy_y[i] >= 200:
+                        emy_count[i] = 1
+                elif emy_count[i] == 1:
+                    emy_x[i] = emy_x[i] - emy_speed[i]
+                    if emy_x[i] < 200:
+                        for j in range(0, 10):
+                            set_enemy(emy_x[i], emy_y[i] + 80, j * 20, EMY_BULLET, 6, 0)
+                        emy_count[i] = 2
+                else:
+                    emy_x[i] = emy_x[i] + emy_speed[i]
+                    if emy_x[i] > 760:
+                        for j in range(0, 10):
+                            set_enemy(emy_x[i], emy_y[i] + 80, j * 20, EMY_BULLET, 6, 0)
+                        emy_count[i] = 1
+                if emy_shield[i] < 100 and tmr % 30 == 0:   # 실드값 < 100 시 해당 타이밍에 탄환발사
+                    set_enemy(emy_x[i], emy_y[i] + 80, random.randint(60, 120), EMY_BULLET, 6, 0)
+
+            if emy_type[i] != EMY_BULLET:                       # 플레이어 기체 발사 탄환과 히트 체크
+                w   = img_enemy[emy_type[i]].get_width()        # 적 기체 이미지 폭
+                h   = img_enemy[emy_type[i]].get_height()       # 적 기체 이미지 높이
+                r   = int((w+h) / 4) + 12                       # 히트체크에 사용할 거리 계산
+                er  = int((w+h) / 4)                            # 폭팔 연출 표시 값 계산
                 for n in range(MISSILE_MAX):
                     if msl_f[n] == True and get_dis(emy_x[i], emy_y[i], msl_x[n], msl_y[n]) < r * r:
-                        msl_f[n] = False                    # 탄환 삭제
-                        set_effect(emy_x[i], emy_y[i])      # 폭팔 이펙트
+                        msl_f[n] = False                                # 탄환 삭제
+                        set_effect(emy_x[i] + random.randint(-er, er)   # 폭팔이펙트
+                                   , emy_y[i] + random.randint(-er, er))
+                        if emy_type[i] == EMY_BOSS:         # 보스 기체라면
+                            png = emy_type[i] + 1           # 보스기체 깜빡임 처리(플래시용 이미지 번호)
                         emy_shield[i] = emy_shield[i] - 1   # 적 기체 실드량 감소
                         score = score + 100                 # 점수 증가
                         if emy_shield[i] == 0:
                             emy_f[i] = False                    # 적 기체 삭제
                             if s_shield < 100:                  # 플레이어 기체 실드량이 최대치가 아니면 실드량 증가
                                 s_shield = s_shield + 1
+                            if emy_type[i] == EMY_BOSS and idx == 1:        # 보스를 격추시키면 클리어
+                                idx = 3
+                                tmr = 0
+                                for j in range(10):
+                                    set_effect(emy_x[i] + random.randint(-er, er)
+                                               , emy_y[i] + random.randint(-er, er))
+                                se_explosion.play()
 
             img_rz = pygame.transform.rotozoom(img_enemy[png], ang, 1.0)                                # 적 기체를 회전시킨 이미지 생성
             scrn.blit(img_rz, [emy_x[i] - img_rz.get_width() / 2, emy_y[i] - img_rz.get_height() / 2])  # 적 기체 이미지 그리기
