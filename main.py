@@ -50,6 +50,8 @@ se_shot         = None          # 탄환 발사 시 사용할 SE 로딩 변수
 idx = 0             # 인덱스 변수
 tmr = 0             # 타이머 변수
 score = 0           # 점수 변수
+hisco = 10000       # 최고 점수
+new_record = False  # 최고 점수 갱신용 플래그 변수
 bg_y = 0            # 배경 스크롤용 변수
 
 s_x = 0           # 플레이어 기체의 X 좌표
@@ -96,12 +98,25 @@ def get_dis(x1, y1, x2, y2):                                # 두 점 사이 거
     return ((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))  # 제곱한 값을 반환(루트 미 사용)
 
 # 문자 표시 함수
-def draw_text(scrn, txt, x, y, siz, col):       # 문자 표시
+def draw_text(scrn, txt, x, y, siz, col):       # 입체적인 문자 표시
     fnt = pygame.font.Font(None, siz)           # 폰트 객체 생성
-    sur = fnt.render(txt, True, col)            # 문자열을 그릴 surface 생성
+    cr = int(col[0] / 2)                        # 빨간색 성분에서 어두운 값 계산
+    cg = int(col[1] / 2)                        # 초록색 성분에서 어두운 값 계산
+    cb = int(col[2] / 2)                        # 파란색 성분에서 어두운 값 계산
+    sur = fnt.render(txt, True, (cr, cg, cb))   # 어두운 색 문자열을 그린 surface 생성
     x = x - sur.get_width() / 2                 # 중심선을 표시할 x 좌표 계산
     y = y - sur.get_height() / 2                # 중심선을 표시할 Y 좌표 계산
-    scrn.blit(sur, [x, y])                      # 문자열을 그린 Surface를 화면에 전송
+    scrn.blit(sur, [x + 1, y + 1])              # 해당 Surface를 화면에 전송
+    cr = col[0] + 128
+    if cr > 255: cr = 255
+    cg = col[1] + 128                           # 초록색 성분에서 밝은 값 계산
+    if cg >255:cg = 255
+    cb = col[2] + 128
+    if cb > 255: cb = 255
+    sur = fnt.render(txt, True,(cr, cg, cb))
+    scrn.blit(sur,[x-1, y-1])
+    sur = fnt.render(txt, True, col)
+    scrn.blit(sur,[x, y])
 
 def move_starship(scrn, key): # 플레이어 기체 이동
     global idx, tmr, s_x, s_y, s_d, key_spc, key_z , s_shield, s_unvincible       # 전역변수 선언
@@ -124,7 +139,7 @@ def move_starship(scrn, key): # 플레이어 기체 이동
         s_x = s_x + 20
         if s_x > 920:
             s_x = 920
-            
+
     key_spc = (key_spc + 1) * key[K_SPACE]                          # 스페이스 키를 누르는 동안 변수 값 증가
     if key_spc % 4 == 1:                                            # 스페이스 키를 처음 누른 후,4 프레임마다 탄환 발사
         set_missile(0)                                              # 미사일 발사
@@ -140,7 +155,7 @@ def move_starship(scrn, key): # 플레이어 기체 이동
         scrn.blit(img_ship[s_d], [s_x - 37 , s_y - 48])             # 플레이어 기체 그리기
 
     if s_unvincible > 0:                                            # 무적 상태라면
-        s_unvincible = s_unvincible - 1                             # ss_unvencible 값 감소
+        s_unvincible = s_unvincible - 1                             # s_unvencible 값 감소
         return                                                      # 함수를 벗어남(적과 히트 체크 미수행)
     elif idx == 1:
         for i in range(ENEMY_MAX):                                      # 적 기체와 히트 체크
@@ -175,7 +190,7 @@ def set_missile(typ):  # 플레이어 기체 발사 탄환 설정
             msl_x[msl_no] = s_x
             msl_y[msl_no] = s_y - 50
             msl_a[msl_no] = a
-            msl_no = (msl_no + 1) % MISSILE_MAX             
+            msl_no = (msl_no + 1) % MISSILE_MAX
 
 def move_missile(scrn): # 탄환이동
     for i in range(MISSILE_MAX):        # 반복해서
@@ -190,14 +205,42 @@ def move_missile(scrn): # 탄환이동
 
 def bring_enemy():      # 적 기체 등장
     sec = tmr / 30              # 게임 진행 시간(초단위)을 sec에 대입
-    if 0 < sec and sec < 15 and tmr % 60 == 0:                          # sec 값이 0~15 사이인 경우 각 타이밍에 :
-        set_enemy(random.randint(20,940),   LINE_T, 90, EMY_MOP, 8, 1)    # 일반 몹 1 등장
-        set_enemy(random.randint(20, 940),  LINE_T, 90, EMY_MOP + 1, 12, 1)  # 일반 몹 2 등장
-        set_enemy(random.randint(100, 860), LINE_T,                          # 일반 몹 3 등장
-                  random.randint(60, 120), EMY_MOP + 2, 6, 3)
-        set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)  # 일반 몹 3 등장
-        set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)  # 일반 몹 4 등장
-    if tmr == 30 * 20:          # 보스출현
+    if 0 < sec and sec < 25:
+        if tmr % 15 == 0:
+            set_enemy(random.randint(20, 940), LINE_T, 90, EMY_MOP, 8, 1)  # 적 1
+    if 30 < sec and sec < 55:
+        if tmr % 10 == 0:
+            set_enemy(random.randint(20, 940), LINE_T, 90, EMY_MOP + 1, 12, 1)  # 적2
+    if 60 < sec and sec < 85:
+        if tmr % 15 == 0:
+            set_enemy(random.randint(100, 860), LINE_T, random.randint(60, 120), EMY_MOP + 2, 6, 3)  # 적 3
+    if 90 < sec and sec < 115:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2) # 적 4
+    if 120 < sec and sec < 145:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(20, 940), LINE_T, 90, EMY_MOP, 8, 1)
+            set_enemy(random.randint(100, 860), LINE_T, random.randint(60, 120), EMY_MOP + 2, 6, 3)
+    if 150 < sec and sec < 175:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(20, 940), LINE_B, 270, EMY_MOP, 8, 1)  #적 1 아래에서 위로
+            set_enemy(random.randint(20, 940), LINE_T, random.randint(70, 110), EMY_MOP + 1, 12, 1)  # 적 2
+    if 180 < sec and sec < 205:
+        if tmr % 20 == 0:
+            set_enemy(random.randint(100, 860), LINE_T, random.randint(60, 120), EMY_MOP + 2, 6, 3)
+            set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)     # 적4
+    if 210 < sec and sec < 235:
+        if tmr % 20 == 0:
+            set_enemy(LINE_L, random.randint(40, 680), 0, EMY_MOP, 12, 1)  # 적 1
+            set_enemy(LINE_R, random.randint(40, 680), 180, EMY_MOP + 1, 18, 1)  # 적 2
+    if 240 < sec and sec < 265:
+        if tmr % 30 == 0:
+            set_enemy(random.randint(20, 940), LINE_T, 90, EMY_MOP, 8, 1)  # 적 1
+            set_enemy(random.randint(20, 940), LINE_T, 90, EMY_MOP + 1, 12, 1)  # 적 2
+            set_enemy(random.randint(100, 860), LINE_T, random.randint(60, 120), EMY_MOP + 2, 6, 3)  # 적 3
+            set_enemy(random.randint(100, 860), LINE_T, 90, EMY_MOP + 3, 12, 2)  # 적 4
+
+    if tmr == 30 * 270:     # 보스출현
         set_enemy(480, -210, 90, EMY_BOSS, 4, 200)
 
 def set_enemy(x, y, a, ty, sp, sh):     # 적 기체 설정
@@ -216,7 +259,7 @@ def set_enemy(x, y, a, ty, sp, sh):     # 적 기체 설정
         emy_no = (emy_no + 1) % ENEMY_MAX   # 다음 설정을 위한 번호 계산
 
 def move_enemy(scrn):   # 적 기체 이동
-    global idx, tmr, score, s_shield
+    global idx, tmr, score, hisco, new_record, s_shield
     for i in range(ENEMY_MAX):
         if emy_f[i] == True:
             ang = -90 - emy_a[i]
@@ -268,6 +311,9 @@ def move_enemy(scrn):   # 적 기체 이동
                             png = emy_type[i] + 1           # 보스기체 깜빡임 처리(플래시용 이미지 번호)
                         emy_shield[i] = emy_shield[i] - 1   # 적 기체 실드량 감소
                         score = score + 100                 # 점수 증가
+                        if score > hisco:
+                            hisco = score
+                            new_record = True
                         if emy_shield[i] == 0:
                             emy_f[i] = False                    # 적 기체 삭제
                             if s_shield < 100:                  # 플레이어 기체 실드량이 최대치가 아니면 실드량 증가
@@ -299,7 +345,7 @@ def draw_effect(scrn):                      # 폭팔 연출
                 eff_p[i] = 0                # eff_p에 0 대입 후 연출 종료
 
 def main(): # 메인 루프
-    global idx, tmr, score, bg_y, s_x, s_y, s_d, s_shield, s_unvincible
+    global idx, tmr, score, new_record, bg_y, s_x, s_y, s_d, s_shield, s_unvincible
     global se_barrage, se_damage, se_explosion, se_shot
 
     pygame.init()
@@ -310,7 +356,7 @@ def main(): # 메인 루프
     se_damage  = pygame.mixer.Sound("sound/damage.ogg")         # SE 로딩
     se_explosion = pygame.mixer.Sound("sound/explosion.ogg")    # SE 로딩
     se_shot      = pygame.mixer.Sound("sound/shot.ogg")         # SE 로딩
-    
+
     while True:
         tmr = tmr + 1
         for event in pygame.event.get():
@@ -340,6 +386,7 @@ def main(): # 메인 루프
                 idx = 1                                                                         # 초기화
                 tmr = 0
                 score = 0
+                new_record = False
                 s_x = 480
                 s_y = 600
                 s_d = 0
@@ -358,9 +405,6 @@ def main(): # 메인 루프
             move_missile(screen)
             bring_enemy()
             move_enemy(screen)
-            if tmr == 30 * 60:      # tmr 값이 30x60이 되면 게임 클리어
-                idx = 3
-                tmr = 0
 
         # 게임오버
         if idx == 2:
@@ -379,6 +423,8 @@ def main(): # 메인 루프
                 pygame.mixer.music.play(0)                      # 게임오버 음악 출력
             if tmr > 120:
                 draw_text(screen, "GAME OVER", 480, 300, 80, RED)
+                if new_record == True:
+                    draw_text(screen, "NEW RECORD" + str(hisco), 480, 400, 60, CYAN)
             if tmr == 400:          # tmr 값이 400 이면 타이틀 화면으로
                 idx = 0
                 tmr = 0
@@ -389,18 +435,23 @@ def main(): # 메인 루프
             move_missile(screen)
             if tmr == 1:
                 pygame.mixer.music.stop()
-            if tmr == 2:
+            if tmr < 30 and tmr % 2 == 0:
+                pygame.draw.rect(screen, (192, 0, 0), [0, 0, 960, 720])
+            if tmr == 120:
                 pygame.mixer.music.load("sound/gameclear.ogg")
                 pygame.mixer.music.play(0)
-            if tmr > 20:
+            if tmr > 120:
                 draw_text(screen, "GAME CLEAR", 480, 300, 80, SILVER)
-            if tmr == 300:
+                if new_record == True:
+                    draw_text(screen, "NEW RECORD " + str(hisco), 480, 400, 60, CYAN)
+            if tmr == 400:
                 idx = 0
                 tmr = 0
 
         # 폭팔 연출
         draw_effect(screen)
         draw_text(screen, "SCORE " + str(score), 200, 30, 50, SILVER)
+        draw_text(screen, "HISCORE " + str(hisco), 760, 30, 50, CYAN)
         if idx != 0:    # 실드 표시
             screen.blit(img_shield, [40, 680])
             pygame.draw.rect(screen, (64, 32, 32), [40 + s_shield * 4 , 680, (100 - s_shield) * 4, 12])
